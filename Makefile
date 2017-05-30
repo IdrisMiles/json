@@ -1,9 +1,5 @@
 .PHONY: pretty clean ChangeLog.md
 
-# used programs
-RE2C = re2c
-SED = sed
-
 # main target
 all:
 	$(MAKE) -C test
@@ -49,9 +45,11 @@ doctest:
 # -Wno-documentation-unknown-command: code uses user-defined commands like @complexity
 # -Wno-exit-time-destructors: warning in Catch code
 # -Wno-keyword-macro: unit-tests use "#define private public"
-# -Wno-deprecated-declarations: some functions are deprecated until 3.0.0
-# -Wno-range-loop-analysis: iterator_wrapper tests tests "for(const auto i...)"
-pedantic:
+# -Wno-deprecated-declarations: the library deprecated some functions
+# -Wno-weak-vtables: exception class is defined inline, but has virtual method
+# -Wno-range-loop-analysis: iterator_wrapper tests "for(const auto i...)"
+# -Wno-float-equal: not all comparisons in the tests can be replaced by Approx
+pedantic_clang:
 	$(MAKE) json_unit CXXFLAGS="\
 		-std=c++11 \
 		-Werror \
@@ -60,8 +58,71 @@ pedantic:
 		-Wno-exit-time-destructors \
 		-Wno-keyword-macro \
 		-Wno-deprecated-declarations \
-		-Wno-range-loop-analysis"
+		-Wno-weak-vtables \
+		-Wno-range-loop-analysis \
+		-Wno-float-equal"
 
+# calling GCC with most warnings
+pedantic_gcc:
+	$(MAKE) json_unit CXX=g++ CXXFLAGS="\
+		-std=c++11 \
+		-Wno-deprecated-declarations \
+		-Werror \
+		-Wall -Wpedantic -Wextra \
+		-Walloca \
+		-Warray-bounds=2 \
+		-Wcast-qual -Wcast-align \
+		-Wchar-subscripts \
+		-Wconditionally-supported \
+		-Wconversion \
+		-Wdate-time \
+		-Wdeprecated \
+		-Wdisabled-optimization \
+		-Wdouble-promotion \
+		-Wduplicated-branches \
+		-Wduplicated-cond \
+		-Weffc++ \
+		-Wformat-overflow=2 \
+		-Wformat-signedness \
+		-Wformat-truncation=2 \
+		-Wformat=2 \
+		-Wimplicit-fallthrough=5 \
+		-Wlogical-op \
+		-Wmissing-declarations \
+		-Wmissing-format-attribute \
+		-Wmissing-include-dirs \
+		-Wnoexcept \
+		-Wnonnull \
+		-Wnull-dereference \
+		-Wold-style-cast \
+		-Woverloaded-virtual \
+		-Wparentheses \
+		-Wplacement-new=2 \
+		-Wredundant-decls \
+		-Wreorder \
+		-Wrestrict \
+		-Wshadow=global \
+		-Wshift-overflow=2 \
+		-Wsign-conversion \
+		-Wsign-promo \
+		-Wsized-deallocation \
+		-Wstrict-overflow=5 \
+		-Wsuggest-attribute=const \
+		-Wsuggest-attribute=format \
+		-Wsuggest-attribute=noreturn \
+		-Wsuggest-attribute=pure \
+		-Wsuggest-final-methods \
+		-Wsuggest-final-types \
+		-Wsuggest-override \
+		-Wtrigraphs \
+		-Wundef \
+		-Wuninitialized -Wunknown-pragmas \
+		-Wunused \
+		-Wunused-const-variable=2 \
+		-Wunused-macros \
+		-Wunused-parameter \
+		-Wuseless-cast \
+		-Wvariadic-macros"
 
 ##########################################################################
 # fuzzing
@@ -123,10 +184,6 @@ clang_sanitize: clean
 # maintainer targets
 ##########################################################################
 
-# create scanner with re2c
-re2c: src/json.hpp.re2c
-	$(RE2C) -W --utf-8 --encoding-policy fail --bit-vectors --nested-ifs --no-debug-info $< | $(SED) '1d' > src/json.hpp
-
 # pretty printer
 pretty:
 	astyle --style=allman --indent=spaces=4 --indent-modifiers \
@@ -134,7 +191,7 @@ pretty:
 	   --indent-col1-comments --pad-oper --pad-header --align-pointer=type \
 	   --align-reference=type --add-brackets --convert-tabs --close-templates \
 	   --lineend=linux --preserve-date --suffix=none --formatted \
-	   src/json.hpp src/json.hpp.re2c test/src/*.cpp \
+	   src/json.hpp test/src/*.cpp \
 	   benchmarks/benchmarks.cpp doc/examples/*.cpp
 
 
